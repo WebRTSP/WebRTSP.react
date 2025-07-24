@@ -1,0 +1,13 @@
+{
+  "name": "webrtsp.react",
+  "description": "Utility components to simplify use WebRTSP in React",
+  "version": "0.1.0",
+  "author": "Sergey Radionov <rsatom@gmail.com>",
+  "license": "BSD-2-Clause",
+  "type": "module",
+  "dependencies": {
+    "lucide-react": "^0.526.0",
+    "react": "^19.1.0",
+    "webrtsp.ts": "github:WebRTSP/WebRTSP.ts#wip"
+  }
+}
