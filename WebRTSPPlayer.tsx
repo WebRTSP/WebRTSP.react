@@ -4,6 +4,8 @@ import { Log, FormatTag } from 'webrtsp.ts/helpers/Log';
 import { WebRTSPPlayer as Player } from 'webrtsp.ts/WebRTSPPlayer';
 import { WebRTSP } from './useWebRTSP';
 
+import './WebRTSPPlayer.css';
+
 
 const TAG = FormatTag("WebRTSP.Client");
 
