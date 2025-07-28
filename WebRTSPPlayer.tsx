@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, CircleX, Video, CirclePlay } from "lucide-react";
-import { Log, FormatTag } from 'webrtsp.ts/helpers/Log';
-import { WebRTSPPlayer as Player } from 'webrtsp.ts/WebRTSPPlayer';
-import { WebRTSP } from './useWebRTSP';
+import { Log, FormatTag } from "webrtsp.ts/helpers/Log";
+import { WebRTSPPlayer as Player } from "webrtsp.ts/WebRTSPPlayer";
+import { WebRTSP } from "./useWebRTSP";
 
-import './WebRTSPPlayer.css';
-
+import "./WebRTSPPlayer.css";
 
 const TAG = FormatTag("WebRTSP.Client");
 

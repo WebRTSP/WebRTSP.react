@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { WebRTSPClient } from 'webrtsp.ts/WebRTSPClient';
-import { Method, Options, URI2Description } from 'webrtsp.ts/Types';
-import { Log, FormatTag } from 'webrtsp.ts/helpers/Log';
-
+import { useState, useRef, useEffect, useCallback } from "react";
+import { WebRTSPClient } from "webrtsp.ts/WebRTSPClient";
+import { Method, Options, URI2Description } from "webrtsp.ts/Types";
+import { Log, FormatTag } from "webrtsp.ts/helpers/Log";
 
 const TAG = FormatTag("useWebRTSP");
 
