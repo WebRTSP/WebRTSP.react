@@ -152,7 +152,7 @@ function WebRTSPPlayer(
       `}
       ref = { videoRef } muted autoPlay hidden = { !playing || !canPlay } />
     {
-      (loading || (playing && !canPlay)) && <LoaderCircle
+      (loading || (playing && !canPlay && !canRestart)) && <LoaderCircle
         className = {`
           ${stateIconClassNameCommon}
           stroke-primary-200
