@@ -120,7 +120,7 @@ function WebRTSPPlayer(
 
   const stateIconClassNameCommon = `
     absolute
-    max-w-1/2 maxh-h-1/2
+    max-w-1/2 max-h-1/2
     w-40 h-40
     top-0 bottom-0 left-0 right-0
     m-auto`;
@@ -145,7 +145,7 @@ function WebRTSPPlayer(
     <video
       className = {`
         absolute
-        max-w-full maxh-h-full
+        max-w-full max-h-full
         top-0 bottom-0 left-0 right-0
         m-auto
         bg-black
