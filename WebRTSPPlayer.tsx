@@ -156,7 +156,8 @@ function WebRTSPPlayer(
         className = {`
           ${stateIconClassNameCommon}
           stroke-primary-200
-          animate-spin `}
+          animate-spin
+        `}
       />
     }
     {
