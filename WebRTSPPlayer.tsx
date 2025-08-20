@@ -5,6 +5,7 @@ import { WebRTSPPlayer as Player } from "webrtsp.ts/WebRTSPPlayer";
 import { WebRTSP } from "./useWebRTSP";
 
 import "./WebRTSPPlayer.css";
+import type { ClassValue } from "clsx";
 
 const TAG = FormatTag("WebRTSP.Client");
 
@@ -20,6 +21,7 @@ type ConnectionState = typeof ConnectionState[keyof typeof ConnectionState];
 
 function WebRTSPPlayer(
   props: {
+    className?: ClassValue,
     webRTSP: WebRTSP,
     activeStreamer?: string,
     activeStreamerRev?: number,
@@ -126,53 +128,53 @@ function WebRTSPPlayer(
     m-auto`;
 
   return (
-    <>
-    {
-      idle && <Video
+    <div className = { `relative ${props.className}` }>
+      {
+        idle && <Video
+          className = {`
+            ${stateIconClassNameCommon}
+            stroke-primary-500
+          `}/>
+      }
+      {
+        failed && <CircleX
+          className = {`
+            ${stateIconClassNameCommon}
+            stroke-destructive-500
+          `}
+        />
+      }
+      <video
         className = {`
-          ${stateIconClassNameCommon}
-          stroke-primary-500
-        `}/>
-    }
-    {
-      failed && <CircleX
-        className = {`
-          ${stateIconClassNameCommon}
-          stroke-destructive-500
+          absolute
+          max-w-full max-h-full
+          top-0 bottom-0 left-0 right-0
+          m-auto
+          bg-black
         `}
-      />
-    }
-    <video
-      className = {`
-        absolute
-        max-w-full max-h-full
-        top-0 bottom-0 left-0 right-0
-        m-auto
-        bg-black
-      `}
-      ref = { videoRef } muted autoPlay hidden = { !playing || !canPlay } />
-    {
-      (loading || (playing && !canPlay && !canRestart)) && <LoaderCircle
-        className = {`
-          ${stateIconClassNameCommon}
-          stroke-primary-200
-          animate-spin
-        `}
-      />
-    }
-    {
-      canRestart && <CirclePlay
-        className = {`
-          ${stateIconClassNameCommon}
-          stroke-primary-transparent-400
-          hover:stroke-primary-transparent-700
-        `}
-        onClick = {() => {
-          incActiveStreamerRev();
-        }}
-      />
-    }
-    </>
+        ref = { videoRef } muted autoPlay hidden = { !playing || !canPlay } />
+      {
+        (loading || (playing && !canPlay && !canRestart)) && <LoaderCircle
+          className = {`
+            ${stateIconClassNameCommon}
+            stroke-primary-200
+            animate-spin
+          `}
+        />
+      }
+      {
+        canRestart && <CirclePlay
+          className = {`
+            ${stateIconClassNameCommon}
+            stroke-primary-transparent-400
+            hover:stroke-primary-transparent-700
+          `}
+          onClick = {() => {
+            incActiveStreamerRev();
+          }}
+        />
+      }
+    </div>
   );
 }
 
