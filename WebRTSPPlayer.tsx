@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, CircleX, Video, CirclePlay } from "lucide-react";
+import {
+  LoaderCircleIcon,
+  CircleXIcon,
+  VideoIcon,
+  CirclePlayIcon
+} from "lucide-react";
 import { Log, FormatTag } from "webrtsp.ts/helpers/Log";
 import { WebRTSPPlayer as Player } from "webrtsp.ts/WebRTSPPlayer";
 import { WebRTSP } from "./useWebRTSP";
@@ -130,14 +135,14 @@ function WebRTSPPlayer(
   return (
     <div className = { `relative ${props.className}` }>
       {
-        idle && <Video
+        idle && <VideoIcon
           className = {`
             ${stateIconClassNameCommon}
             stroke-primary-500
           `}/>
       }
       {
-        failed && <CircleX
+        failed && <CircleXIcon
           className = {`
             ${stateIconClassNameCommon}
             stroke-destructive-500
@@ -154,7 +159,7 @@ function WebRTSPPlayer(
         `}
         ref = { videoRef } muted autoPlay hidden = { !playing || !canPlay } />
       {
-        (loading || (playing && !canPlay && !canRestart)) && <LoaderCircle
+        (loading || (playing && !canPlay && !canRestart)) && <LoaderCircleIcon
           className = {`
             ${stateIconClassNameCommon}
             stroke-primary-200
@@ -163,7 +168,7 @@ function WebRTSPPlayer(
         />
       }
       {
-        canRestart && <CirclePlay
+        canRestart && <CirclePlayIcon
           className = {`
             ${stateIconClassNameCommon}
             stroke-primary-transparent-400
