@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { WebRTSPClient } from "webrtsp.ts/WebRTSPClient";
 import { Method, Options, URI2Description } from "webrtsp.ts/Types";
 import { Log, FormatTag } from "webrtsp.ts/helpers/Log";
+import { useLazyRef } from "./useLazyRef";
 
 const TAG = FormatTag("useWebRTSP");
 
@@ -25,9 +26,9 @@ export class WebRTSP {
 export function useWebRTSP(url: string): WebRTSP {
   const clientRef = useRef<WebRTSPClient>(undefined);
   const [connected, setConnected] = useState(false);
-  const [rootOptions, setRootOptions] = useState(new Options());
-  const [rootList, setRootList] = useState(new URI2Description());
-  const urisInfosRef = useRef(new URI2Info());
+  const [rootOptions, setRootOptions] = useState(() => new Options());
+  const [rootList, setRootList] = useState(() => new URI2Description());
+  const urisInfosRef = useLazyRef(() => new URI2Info());
   const [, setUrisInfosRev] = useState(0);
 
   const incUrisInfosRev = () => {
