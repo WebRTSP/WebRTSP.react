@@ -95,7 +95,13 @@ export function useWebRTSP(url: string): WebRTSP {
 
           const urisInfo = new URI2Info();
           for (const [key] of list) {
-            const uriOptions = await client.OPTIONS(key);
+            let uriOptions = new Options;
+            try {
+              uriOptions = await client.OPTIONS(key);
+            } catch(e: unknown) {
+              Log.error(TAG, e);
+            }
+
             urisInfo.set(key, {
               fetching: false,
               options: uriOptions,
