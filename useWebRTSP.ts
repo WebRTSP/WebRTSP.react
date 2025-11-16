@@ -19,6 +19,7 @@ export class WebRTSP {
   connected: boolean = false;
   rootOptions = new Options();
   rootList = new URI2Description();
+  fetching: boolean = false;
   urisInfos = new URI2Info();
   fetchList: (uri: string) => Promise<void> = () => { return Promise.resolve(); };
 }
@@ -28,6 +29,7 @@ export function useWebRTSP(url: string): WebRTSP {
   const [connected, setConnected] = useState(false);
   const [rootOptions, setRootOptions] = useState(() => new Options());
   const [rootList, setRootList] = useState(() => new URI2Description());
+  const [fetching, setFetching] = useState(false);
   const urisInfosRef = useLazyRef(() => new URI2Info());
   const [, setUrisInfosRev] = useState(0);
 
@@ -46,6 +48,7 @@ export function useWebRTSP(url: string): WebRTSP {
       setConnected(false);
       setRootOptions(new Options());
       setRootList(new URI2Description());
+      setFetching(false);
       urisInfosRef.current.clear();
       incUrisInfosRev();
     };
@@ -119,7 +122,13 @@ export function useWebRTSP(url: string): WebRTSP {
       }
     };
 
-    fetchOptions();
+    setFetching(true);
+    fetchOptions()
+      .catch()
+      .finally(() => {
+        if(!ignoreResult)
+          setFetching(false);
+      });
 
     return () => {
       ignoreResult = true;
@@ -152,6 +161,7 @@ export function useWebRTSP(url: string): WebRTSP {
     connected,
     rootOptions,
     rootList,
+    fetching,
     urisInfos: urisInfosRef.current,
     fetchList,
   };
