@@ -70,7 +70,7 @@ export function useWebRTSP(url: string): WebRTSP {
       setConnected(false);
       resetState();
     };
-  }, [url]);
+  }, [url, urisInfosRef]);
 
   useEffect(() => {
     const client = clientRef.current;
@@ -125,7 +125,7 @@ export function useWebRTSP(url: string): WebRTSP {
     return () => {
       ignoreResult = true;
     };
-  }, [clientRef, connected]);
+  }, [clientRef, connected, urisInfosRef]);
 
   const fetchList = useCallback(async (uri: string) => {
     const client = clientRef.current;
@@ -146,7 +146,7 @@ export function useWebRTSP(url: string): WebRTSP {
     uriInfo.fetching = false;
 
     incUrisInfosRev();
-  }, [connected]);
+  }, [connected, urisInfosRef]);
 
   return {
     connection: clientRef.current,
