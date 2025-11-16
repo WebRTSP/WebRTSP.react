@@ -43,6 +43,7 @@ export function useWebRTSP(url: string): WebRTSP {
     let active = true;
 
     const resetState = () => {
+      setConnected(false);
       setRootOptions(new Options());
       setRootList(new URI2Description());
       urisInfosRef.current.clear();
@@ -57,7 +58,6 @@ export function useWebRTSP(url: string): WebRTSP {
     };
     client.onDisconnected = () => {
       if(active) {
-        setConnected(false);
         resetState();
       }
     };
@@ -67,7 +67,6 @@ export function useWebRTSP(url: string): WebRTSP {
       active = false;
       client.disconnect().catch();
       clientRef.current = undefined;
-      setConnected(false);
       resetState();
     };
   }, [url, urisInfosRef]);
