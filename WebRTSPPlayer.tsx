@@ -31,6 +31,7 @@ function WebRTSPPlayer(
     activeStreamer?: string,
     activeStreamerRev?: number,
     incActiveStreamerRev: () => void,
+    iceServers?: RTCIceServer[],
   }
 ) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,6 +43,7 @@ function WebRTSPPlayer(
   const activeStreamer = props.activeStreamer;
   const activeStreamerRev = props.activeStreamerRev;
   const incActiveStreamerRev = props.incActiveStreamerRev;
+  const iceServers = props.iceServers || [{ urls: ["stun:stun.l.google.com:19302"] }];
 
   useEffect(() => {
     const video = videoRef.current;
@@ -65,9 +67,7 @@ function WebRTSPPlayer(
 
     const player = new Player(
       webRTSP.connection,
-      [{
-        urls: ["stun:stun.l.google.com:19302"]
-      }],
+      iceServers,
       activeStreamer,
       video,
     );
@@ -101,7 +101,8 @@ function WebRTSPPlayer(
     webRTSP.connection,
     webRTSP.connected,
     activeStreamer,
-    activeStreamerRev
+    activeStreamerRev,
+    iceServers,
   ]);
 
   const idle = activeStreamer == undefined;
