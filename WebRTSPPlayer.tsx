@@ -14,6 +14,8 @@ import type { ClassValue } from "clsx";
 
 const TAG = FormatTag("WebRTSP.Client");
 
+const DefaultIceServers = [{ urls: ["stun:stun.l.google.com:19302"] }];
+
 const ConnectionState = {
   New: "new",
   Connecting: "connecting",
@@ -43,7 +45,7 @@ function WebRTSPPlayer(
   const activeStreamer = props.activeStreamer;
   const activeStreamerRev = props.activeStreamerRev;
   const incActiveStreamerRev = props.incActiveStreamerRev;
-  const iceServers = props.iceServers || [{ urls: ["stun:stun.l.google.com:19302"] }];
+  const iceServers = props.iceServers || DefaultIceServers;
 
   useEffect(() => {
     const video = videoRef.current;
