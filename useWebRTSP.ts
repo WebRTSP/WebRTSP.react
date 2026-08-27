@@ -116,6 +116,11 @@ export function useWebRTSP(url: string): WebRTSP {
 
           urisInfosRef.current = urisInfo;
           incUrisInfosRev();
+        } else {
+          const rootList = new URI2Description();
+          rootList.set("*", "");
+          setRootList(rootList);
+          incUrisInfosRev();
         }
       } catch(e: unknown) {
         Log.error(TAG, e);
