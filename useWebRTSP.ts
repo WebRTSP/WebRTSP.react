@@ -1,37 +1,41 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { WebRTSPClient } from "webrtsp.ts/WebRTSPClient";
-import { Method, Options, URI2Description } from "webrtsp.ts/Types";
-import { Log, FormatTag } from "webrtsp.ts/helpers/Log";
+import { Method, Options, URI2Description, type Credentials } from "webrtsp.ts/Types";
 import { useLazyRef } from "./useLazyRef";
 
-const TAG = FormatTag("useWebRTSP");
+export const URIInfoStatus = {
+  FETCHING: "fetching",
+  FETCHED: "fetched",
+  ERROR: "error",
+} as const;
 
 export interface URIInfo {
-  fetching: boolean
+  status: typeof URIInfoStatus[keyof typeof URIInfoStatus]
   options: Options
-  list: URI2Description
+  list: URI2Description | undefined
 }
 
 export class URI2Info extends Map<string, URIInfo> {}
 
 export class WebRTSP {
-  connection?: WebRTSPClient;
   connected: boolean = false;
-  rootOptions = new Options();
-  rootList = new URI2Description();
-  fetching: boolean = false;
-  urisInfos = new URI2Info();
-  fetchList: (uri: string) => Promise<void> = () => { return Promise.resolve(); };
+  connection?: WebRTSPClient;
+  uriInfo: (uri: string) => URIInfo | undefined = () => { return undefined; };
+  fetchUriInfo: (
+    uri: string,
+    fetchList: boolean,
+  ) => Promise<URIInfo | undefined> = () => { return Promise.resolve(undefined); };
+  ensureFetched: (
+    uri: string,
+    withList: boolean
+  ) => boolean = () => { return false; };
 }
 
-export function useWebRTSP(url: string): WebRTSP {
+export function useWebRTSP(url: string | undefined, credentials?: Credentials): WebRTSP {
   const clientRef = useRef<WebRTSPClient>(undefined);
-  const [connected, setConnected] = useState(false);
-  const [rootOptions, setRootOptions] = useState(() => new Options());
-  const [rootList, setRootList] = useState(() => new URI2Description());
-  const [fetching, setFetching] = useState(false);
+  const [client, setClient] = useState<WebRTSPClient | undefined>(undefined);
   const urisInfosRef = useLazyRef(() => new URI2Info());
-  const [, setUrisInfosRev] = useState(0);
+  const [urisInfosRev, setUrisInfosRev] = useState(0);
 
   const incUrisInfosRev = () => {
     setUrisInfosRev((rev: number) => {
@@ -40,134 +44,132 @@ export function useWebRTSP(url: string): WebRTSP {
   };
 
   useEffect(() => {
-    clientRef.current = new WebRTSPClient(url);
+    if(!url)
+      return;
+
+    const client = new WebRTSPClient(url);
+    clientRef.current = client;
 
     let active = true;
 
     const resetState = () => {
-      setConnected(false);
-      setRootOptions(new Options());
-      setRootList(new URI2Description());
-      setFetching(false);
+      clientRef.current = undefined;
+      setClient(undefined);
       urisInfosRef.current.clear();
       incUrisInfosRev();
     };
 
-    const client = clientRef.current;
     client.onConnected = () => {
       if(active) {
-        setConnected(true);
+        clientRef.current = client;
+        setClient(client);
       }
     };
     client.onDisconnected = () => {
-      if(active) {
+      if(active)
         resetState();
-      }
     };
     client.connect();
 
     return () => {
       active = false;
-      client.disconnect().catch();
-      clientRef.current = undefined;
+      client.disconnect().catch(() => {});
       resetState();
     };
   }, [url, urisInfosRef]);
 
-  useEffect(() => {
-    const client = clientRef.current;
-    if(!client || !connected)
-      return;
-
-    let ignoreResult = false;
-
-    const fetchOptions = async () => {
-      try {
-        const rootOptions = await client.OPTIONS("*");
-        if(ignoreResult)
-          return;
-
-        setRootOptions(rootOptions);
-        if(rootOptions.has(Method.LIST)) {
-          const list = await client.LIST("*");
-          if(ignoreResult)
-            return;
-
-          setRootList(list);
-
-          const urisInfo = new URI2Info();
-          for (const [key] of list) {
-            let uriOptions = new Options;
-            try {
-              uriOptions = await client.OPTIONS(key);
-            } catch(e: unknown) {
-              Log.error(TAG, e);
-            }
-
-            urisInfo.set(key, {
-              fetching: false,
-              options: uriOptions,
-              list: new URI2Description(),
-            });
-
-            if(ignoreResult)
-              return;
-          }
-
-          urisInfosRef.current = urisInfo;
-          incUrisInfosRev();
-        } else {
-          const rootList = new URI2Description();
-          rootList.set("*", "");
-          setRootList(rootList);
-          incUrisInfosRev();
-        }
-      } catch(e: unknown) {
-        Log.error(TAG, e);
-      }
-    };
-
-    setFetching(true);
-    fetchOptions()
-      .catch()
-      .finally(() => {
-        if(!ignoreResult)
-          setFetching(false);
-      });
-
-    return () => {
-      ignoreResult = true;
-    };
-  }, [clientRef, connected, urisInfosRef]);
-
-  const fetchList = useCallback(async (uri: string) => {
-    const client = clientRef.current;
-    if(!client || !connected)
-      return;
+  const uriInfo = useCallback((uri: string): URIInfo | undefined => {
+    (void urisInfosRev); // urisInfosRef is tightly bound to urisInfosRev
 
     const urisInfos = urisInfosRef.current;
-    const uriInfo = urisInfos.get(uri);
-    if(!uriInfo)
-      return;
+    return urisInfos.get(uri);
+  }, [urisInfosRef, urisInfosRev]);
 
-    uriInfo.fetching = true;
+  const fetchUriInfo = useCallback(async (
+    uri: string,
+    fetchList: boolean,
+  ): Promise<URIInfo | undefined> => {
+    if(!client)
+      return undefined;
+
+    if(client !== clientRef.current)
+      return undefined;
+
+    const urisInfos = urisInfosRef.current;
+    let uriInfo  = urisInfos.get(uri);
+    if(!uriInfo) {
+       uriInfo = {
+        status: URIInfoStatus.FETCHING,
+        options: new Options,
+        list: undefined,
+      };
+      urisInfos.set(uri, uriInfo);
+    } else if(uriInfo.status != URIInfoStatus.FETCHING) {
+      uriInfo.status = URIInfoStatus.FETCHING;
+    } else {
+      return uriInfo;
+    }
 
     incUrisInfosRev();
 
-    const list = await client.LIST(uri);
-    uriInfo.list = list;
-    uriInfo.fetching = false;
+    try {
+      const options = await client.OPTIONS(uri, credentials);
+      uriInfo.options = options;
 
-    incUrisInfosRev();
-  }, [connected, urisInfosRef]);
+      if(client !== clientRef.current)
+        return;
 
-  return {
-    connection: clientRef.current,
-    connected,
-    rootOptions,
-    rootList,
-    fetching,
-    urisInfos: urisInfosRef.current,
-    fetchList,
-  };
+      if(fetchList) {
+        if(options && options.has(Method.LIST)) {
+          const list = await client.LIST(uri, credentials);
+          uriInfo.list = list;
+        } else {
+          uriInfo.list = new URI2Description;
+        }
+      } else {
+          uriInfo.list = undefined;
+      }
+
+      uriInfo.status = URIInfoStatus.FETCHED;
+    } catch {
+      uriInfo.status = URIInfoStatus.ERROR;
+    } finally {
+      if(client === clientRef.current)
+        incUrisInfosRev();
+    }
+
+    return uriInfo;
+  }, [credentials, client, urisInfosRef]);
+
+  const ensureFetched = useCallback((
+    uri: string,
+    withList: boolean,
+  ): boolean => {
+    if(!client)
+      return false;
+
+    if(client !== clientRef.current)
+      return false;
+
+    const urisInfos = urisInfosRef.current;
+    let uriInfo = urisInfos.get(uri);
+    if(uriInfo &&
+      uriInfo.status == URIInfoStatus.FETCHED &&
+      (!withList || !!uriInfo.list))
+    {
+      return true;
+    }
+
+    fetchUriInfo(uri, withList);
+
+    return false;
+  }, [client, urisInfosRef, fetchUriInfo]);
+
+  return useMemo(() => ({
+    connected: !!client,
+    connection: client,
+    uriInfo,
+    fetchUriInfo,
+    ensureFetched,
+  } as const), [client, uriInfo, fetchUriInfo, ensureFetched]);
 }

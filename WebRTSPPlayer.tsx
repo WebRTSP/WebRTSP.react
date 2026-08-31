@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
   LoaderCircleIcon,
-  CircleXIcon,
-  VideoIcon,
+  VideoOffIcon,
   CirclePlayIcon
 } from "lucide-react";
 import { Log, FormatTag } from "webrtsp.ts/helpers/Log";
 import { WebRTSPPlayer as Player } from "webrtsp.ts/WebRTSPPlayer";
-import { WebRTSP } from "./useWebRTSP";
-
-import "./WebRTSPPlayer.css";
-import type { ClassValue } from "clsx";
+import { type Credentials } from "webrtsp.ts/Types"
+import { URIInfoStatus, WebRTSP, type URIInfo } from "./useWebRTSP";
 
 const TAG = FormatTag("WebRTSP.Client");
 
@@ -26,33 +23,97 @@ const ConnectionState = {
 } as const;
 type ConnectionState = typeof ConnectionState[keyof typeof ConnectionState];
 
-function WebRTSPPlayer(
+const WebRTSPPlayerStatus = {
+  IDLE: "idle",
+  LOADING: "loading",
+  PLAYING: "playing",
+  FAILED: "failed",
+} as const;
+type WebRTSPPlayerStatus = typeof WebRTSPPlayerStatus[keyof typeof WebRTSPPlayerStatus];
+
+function URIInfo2PlayerStatus(uriInfo: URIInfo | undefined) {
+  let playerStatus: WebRTSPPlayerStatus;
+  switch(uriInfo?.status) {
+    case URIInfoStatus.FETCHING:
+      playerStatus = WebRTSPPlayerStatus.LOADING;
+      break;
+    case URIInfoStatus.FETCHED:
+      playerStatus = WebRTSPPlayerStatus.PLAYING;
+      break;
+    case URIInfoStatus.ERROR:
+      playerStatus = WebRTSPPlayerStatus.FAILED;
+      break;
+    default:
+      playerStatus = WebRTSPPlayerStatus.IDLE;
+      break;
+  }
+
+  return playerStatus;
+}
+
+export default function WebRTSPPlayer(
   props: {
-    className?: ClassValue,
+    className?: string,
     webRTSP: WebRTSP,
-    activeStreamer?: string,
-    activeStreamerRev?: number,
+    uri?: string,
+    credentials?: Credentials,
+    revision?: number,
     incActiveStreamerRev: () => void,
     iceServers?: RTCIceServer[],
   }
 ) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<Player>(undefined);
-  type OptionalConnectionState = ConnectionState | undefined;
-  const [connectionState, setConnectionState] = useState<OptionalConnectionState>();
+  const [connectionState, setConnectionState] = useState<ConnectionState | undefined>();
   const [canPlay, setCanPlay] = useState(false);
-  const webRTSP = props.webRTSP;
-  const activeStreamer = props.activeStreamer;
-  const activeStreamerRev = props.activeStreamerRev;
+
+  const { connected, connection, uriInfo: getUriInfo, ensureFetched } = props.webRTSP;
+  const uri = props.uri;
+  const credentials = props.credentials;
+  const revision = props.revision;
+
+  const uriInfo = uri ? getUriInfo(uri) : undefined;
+  const uriInfoFetched = uriInfo?.status == URIInfoStatus.FETCHED;
+  const forceStatus = URIInfo2PlayerStatus(uriInfo);
+
+  const forceIdle = forceStatus == WebRTSPPlayerStatus.IDLE;
+  const forceLoading = forceStatus == WebRTSPPlayerStatus.LOADING;
+  const forceFailed = forceStatus == WebRTSPPlayerStatus.FAILED;
+
   const incActiveStreamerRev = props.incActiveStreamerRev;
   const iceServers = props.iceServers || DefaultIceServers;
+
+  useEffect(() => {
+    if(!uri || uriInfoFetched)
+      return;
+
+    let isMounted = true;
+
+    (async () => {
+      for(;;) {
+        if(!isMounted)
+          break;
+
+        if(ensureFetched(uri, false))
+          break;
+
+        const retryDelay = Math.floor(2000 + 3000 * Math.random());
+        await (new Promise((resolve) => setTimeout(resolve, retryDelay)));
+      };
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [uri, uriInfoFetched, ensureFetched]);
 
   useEffect(() => {
     const video = videoRef.current;
     if(
       !video ||
-      !webRTSP.connection || !webRTSP.connected ||
-      !activeStreamer
+      !connection || !connected ||
+      !uri ||
+      forceStatus != WebRTSPPlayerStatus.PLAYING
     ) {
       return;
     }
@@ -68,9 +129,10 @@ function WebRTSPPlayer(
     });
 
     const player = new Player(
-      webRTSP.connection,
+      connection,
       iceServers,
-      activeStreamer,
+      uri,
+      credentials,
       video,
     );
     playerRef.current = player;
@@ -100,21 +162,23 @@ function WebRTSPPlayer(
     };
 
   }, [
-    webRTSP.connection,
-    webRTSP.connected,
-    activeStreamer,
-    activeStreamerRev,
+    connected,
+    connection,
+    uri,
+    credentials,
+    revision,
     iceServers,
+    forceStatus,
   ]);
 
-  const idle = activeStreamer == undefined;
+  const idle = forceIdle || !uri;
 
-  const loading = connectionState &&
-    ([
+  const loading = forceLoading ||
+    (connectionState && ([
       ConnectionState.New,
       ConnectionState.Connecting,
       ConnectionState.Disconnected
-    ] as string[]).includes(connectionState);
+    ] as string[]).includes(connectionState));
 
   const playing = connectionState &&
     ([
@@ -126,7 +190,7 @@ function WebRTSPPlayer(
     ([
       ConnectionState.Closed,
     ] as string[]).includes(connectionState);
-  const failed = connectionState == ConnectionState.Failed;
+  const failed = forceFailed || connectionState == ConnectionState.Failed;
 
   const stateIconClassNameCommon = `
     absolute
@@ -138,17 +202,19 @@ function WebRTSPPlayer(
   return (
     <div className = { `relative ${props.className}` }>
       {
-        idle && <VideoIcon
+        idle && <VideoOffIcon
           className = {`
             ${stateIconClassNameCommon}
-            stroke-primary-500
+            stroke-primary
+            opacity-50
           `}/>
       }
       {
-        failed && <CircleXIcon
+        failed && <VideoOffIcon
           className = {`
             ${stateIconClassNameCommon}
-            stroke-destructive-500
+            stroke-destructive
+            opacity-60
           `}
         />
       }
@@ -165,7 +231,8 @@ function WebRTSPPlayer(
         (loading || (playing && !canPlay && !canRestart)) && <LoaderCircleIcon
           className = {`
             ${stateIconClassNameCommon}
-            stroke-primary-200
+            stroke-primary
+            opacity-50
             animate-spin
           `}
         />
@@ -174,8 +241,10 @@ function WebRTSPPlayer(
         canRestart && <CirclePlayIcon
           className = {`
             ${stateIconClassNameCommon}
-            stroke-primary-transparent-400
-            hover:stroke-primary-transparent-700
+            stroke-primary
+            opacity-60
+            hover:stroke-primary
+            hover:opacity-30
           `}
           onClick = {() => {
             incActiveStreamerRev();
@@ -185,5 +254,3 @@ function WebRTSPPlayer(
     </div>
   );
 }
-
-export default WebRTSPPlayer;
